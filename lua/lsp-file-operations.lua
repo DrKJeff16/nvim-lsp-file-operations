@@ -51,7 +51,7 @@ local function setup_events(op_events, subscribe)
   end
 end
 
-M.setup = function(opts)
+function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", default_config, opts or {})
   if M.config.debug then
     log.level = "debug"
@@ -97,7 +97,20 @@ M.setup = function(opts)
       -- create an event name based on the module and the event
       local id = ("%s.%s"):format(module, event)
       -- just in case setup is called twice, unsubscribe from event
-      neo_tree_events.unsubscribe({ id = id })
+      neo_tree_events.unsubscribe({
+        id = id,
+        event = event,
+        handler = function(args)
+          -- translate neo-tree arguemnts to the same format as nvim-tree
+          if type(args) == "table" then
+            args = { old_name = args.source, new_name = args.destination }
+          else
+            args = { fname = args }
+          end
+          -- load module and call the callback
+          require(module).callback(args)
+        end,
+      })
       neo_tree_events.subscribe({
         id = id,
         event = event,
@@ -123,18 +136,18 @@ M.setup = function(opts)
 
     ---@type HandlerMap
     local events = {
-      willRenameFiles = { 'TriptychWillMoveNode' },
-      didRenameFiles = { 'TriptychDidMoveNode' },
-      willCreateFiles = { 'TriptychWillCreateNode' },
-      didCreateFiles = { 'TriptychDidCreateNode' },
-      willDeleteFiles = { 'TriptychWillDeleteNode' },
-      didDeleteFiles = { 'TriptychDidDeleteNode' },
+      willRenameFiles = { "TriptychWillMoveNode" },
+      didRenameFiles = { "TriptychDidMoveNode" },
+      willCreateFiles = { "TriptychWillCreateNode" },
+      didCreateFiles = { "TriptychDidCreateNode" },
+      willDeleteFiles = { "TriptychWillDeleteNode" },
+      didDeleteFiles = { "TriptychDidDeleteNode" },
     }
     setup_events(events, function(module, event)
-      vim.api.nvim_create_autocmd('User', {
-        group = 'TriptychEvents',
+      vim.api.nvim_create_autocmd("User", {
+        group = "TriptychEvents",
         pattern = event,
-        callback = function (callback_data)
+        callback = function(callback_data)
           local args = {}
           local data = callback_data.data
           if data.from_path and data.to_path then
@@ -152,12 +165,12 @@ end
 
 --- The extra client capabilities provided by this plugin. To be merged with
 --- vim.lsp.protocol.make_client_capabilities() and sent to the LSP server.
-M.default_capabilities = function()
+function M.default_capabilities()
   local config = M.config or default_config
   local result = {
     workspace = {
-      fileOperations = {}
-    }
+      fileOperations = {},
+    },
   }
   for operation, capability in pairs(capabilities) do
     result.workspace.fileOperations[capability] = config.operations[operation]

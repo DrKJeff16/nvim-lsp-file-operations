@@ -13,30 +13,37 @@ local function getWorkspaceEdit(client, fname)
   }
   log.debug("Sending workspace/willCreateFiles request", will_create_params)
   local timeout_ms = require("lsp-file-operations").config.timeout_ms
-  local success, resp = pcall(client.request_sync, "workspace/willCreateFiles", will_create_params, timeout_ms)
+  local success, resp =
+    pcall(client.request_sync, "workspace/willCreateFiles", will_create_params, timeout_ms)
   log.debug("Got workspace/willCreateFiles response", resp)
   if not success then
     log.error("Error while sending workspace/willCreateFiles request", resp)
-    return nil
+    return
   end
-  if resp == nil or resp.result == nil then
+  if not (resp and resp.result) then
     log.warn("Got empty workspace/willCreateFiles response, maybe a timeout?")
-    return nil
+    return
   end
   return resp.result
 end
 
-M.callback = function(data)
-  for _, client in pairs(vim.lsp.get_active_clients()) do
-    local will_create =
-      utils.get_nested_path(client, { "server_capabilities", "workspace", "fileOperations", "willCreate" })
-    if will_create ~= nil then
-      local filters = will_create.filters or {}
-      if utils.matches_filters(filters, data.fname) then
-        local edit = getWorkspaceEdit(client, data.fname)
-        if edit ~= nil then
-          log.debug("Going to apply workspace/willCreateFiles edit", edit)
-          vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+function M.callback(data)
+  local clients = vim.fn.has("nvim-0.10") == 1 and vim.lsp.get_clients()
+    or vim.lsp.get_active_clients()
+  for _, client in pairs(clients) do
+    if client.initialized ~= nil and client.initialized then
+      local will_create = utils.get_nested_path(
+        client,
+        { "server_capabilities", "workspace", "fileOperations", "willCreate" }
+      )
+      if will_create ~= nil then
+        local filters = will_create.filters or {}
+        if utils.matches_filters(filters, data.fname) then
+          local edit = getWorkspaceEdit(client, data.fname)
+          if edit ~= nil then
+            log.debug("Going to apply workspace/willCreateFiles edit", edit)
+            vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+          end
         end
       end
     end

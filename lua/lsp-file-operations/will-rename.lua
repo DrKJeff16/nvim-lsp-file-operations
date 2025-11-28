@@ -3,6 +3,10 @@ local log = require("lsp-file-operations.log")
 
 local M = {}
 
+---@param client vim.lsp.Client
+---@param old_name string
+---@param new_name string
+---@return lsp.WorkspaceEdit|nil
 local function getWorkspaceEdit(client, old_name, new_name)
   local will_rename_params = {
     files = {
@@ -37,14 +41,11 @@ function M.callback(data)
         client,
         { "server_capabilities", "workspace", "fileOperations", "willRename" }
       )
-      if will_rename ~= nil then
-        local filters = will_rename.filters or {}
-        if utils.matches_filters(filters, data.old_name) then
-          local edit = getWorkspaceEdit(client, data.old_name, data.new_name)
-          if edit ~= nil then
-            log.debug("Going to apply workspace/willRename edit", edit)
-            vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
-          end
+      if will_rename and utils.matches_filters(will_rename.filters or {}, data.old_name) then
+        local edit = getWorkspaceEdit(client, data.old_name, data.new_name)
+        if edit then
+          log.debug("Going to apply workspace/willRename edit", edit)
+          vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
         end
       end
     end

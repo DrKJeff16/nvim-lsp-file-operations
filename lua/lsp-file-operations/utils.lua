@@ -4,25 +4,31 @@ local log = require("lsp-file-operations.log")
 
 local M = {}
 
-function M.get_nested_path(table, keys)
+---@param T table
+---@param keys (string|integer)[]
+---@return table|nil
+function M.get_nested_path(T, keys)
   if #keys == 0 then
-    return table
+    return T
   end
   local key = keys[1]
-  if table[key] == nil then
+  if T[key] == nil then
     return
   end
-  return M.get_nested_path(table[key], { unpack(keys, 2) })
+  return M.get_nested_path(T[key], { unpack(keys, 2) })
 end
 
 -- needed for globs like `**/`
+---@param path string
+---@param is_dir boolean
+---@return string path
 local function ensure_dir_trailing_slash(path, is_dir)
-  if is_dir and not path:match("/$") then
-    return path .. "/"
-  end
-  return path
+  return (is_dir and not path:match("/$")) and (path .. "/") or path
 end
 
+---@param name string
+---@return string absolute_path
+---@return boolean is_dir
 local function get_absolute_path(name)
   local path = Path:new(name)
   local is_dir = path:is_dir()
@@ -30,24 +36,25 @@ local function get_absolute_path(name)
   return absolute_path, is_dir
 end
 
+---@param pattern lsp.FileOperationPattern
+---@return string regex
 local function get_regex(pattern)
   local regex = vim.fn.glob2regpat(pattern.glob)
-  if pattern.options and pattern.options.ignorecase then
-    return "\\c" .. regex
-  end
-  return regex
+  return (pattern.options and pattern.options.ignoreCase) and ("\\c" .. regex) or regex
 end
 
 -- filter: FileOperationFilter
+---@param filter lsp.FileOperationFilter
+---@param name string
+---@param is_dir boolean
 local function match_filter(filter, name, is_dir)
-  local pattern = filter.pattern
-  local match_type = pattern.matches
+  local match_type = filter.pattern.matches
   if
     not match_type
     or (match_type == "folder" and is_dir)
     or (match_type == "file" and not is_dir)
   then
-    local regex = get_regex(pattern)
+    local regex = get_regex(filter.pattern)
     log.debug("Matching name", name, "to pattern", regex)
     local previous_ignorecase = vim.o.ignorecase
     vim.o.ignorecase = false
@@ -60,6 +67,8 @@ local function match_filter(filter, name, is_dir)
 end
 
 -- filters: FileOperationFilter[]
+---@param filters lsp.FileOperationFilter[]
+---@param name string
 function M.matches_filters(filters, name)
   local absolute_path, is_dir = get_absolute_path(name)
   for _, filter in pairs(filters) do

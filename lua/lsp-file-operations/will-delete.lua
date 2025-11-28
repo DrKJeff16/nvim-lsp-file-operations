@@ -3,6 +3,9 @@ local log = require("lsp-file-operations.log")
 
 local M = {}
 
+---@param client vim.lsp.Client
+---@param fname string
+---@return lsp.WorkspaceEdit|nil
 local function getWorkspaceEdit(client, fname)
   local will_delete_params = {
     files = {
@@ -36,14 +39,11 @@ function M.callback(data)
         client,
         { "server_capabilities", "workspace", "fileOperations", "willDelete" }
       )
-      if will_delete ~= nil then
-        local filters = will_delete.filters or {}
-        if utils.matches_filters(filters, data.fname) then
-          local edit = getWorkspaceEdit(client, data.fname)
-          if edit ~= nil then
-            log.debug("Going to apply workspace/willDelete edit", edit)
-            vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
-          end
+      if will_delete and utils.matches_filters(will_delete.filters or {}, data.fname) then
+        local edit = getWorkspaceEdit(client, data.fname)
+        if edit then
+          log.debug("Going to apply workspace/willDelete edit", edit)
+          vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
         end
       end
     end

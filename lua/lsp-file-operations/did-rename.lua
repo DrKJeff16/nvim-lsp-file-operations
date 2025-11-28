@@ -12,7 +12,7 @@ function M.callback(data)
         client,
         { "server_capabilities", "workspace", "fileOperations", "didRename" }
       )
-      if did_rename ~= nil then
+      if did_rename then
         local filters = did_rename.filters or {}
         if utils.matches_filters(filters, data.old_name) then
           local params = {

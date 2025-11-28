@@ -12,7 +12,7 @@ function M.callback(data)
         client,
         { "server_capabilities", "workspace", "fileOperations", "didDelete" }
       )
-      if did_delete ~= nil then
+      if did_delete then
         local filters = did_delete.filters or {}
         if utils.matches_filters(filters, data.fname) then
           local params = {

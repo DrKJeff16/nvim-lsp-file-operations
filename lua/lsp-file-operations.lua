@@ -40,13 +40,10 @@ local capabilities = {
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
   for operation, enabled in pairs(M.config.operations) do
-    if enabled then
-      local module, events = modules[operation], op_events[operation]
-      if module and events then
-        vim.tbl_map(function(event)
-          subscribe(module, event)
-        end, events)
-      end
+    if enabled and modules[operation] and op_events[operation] then
+      vim.tbl_map(function(event)
+        subscribe(modules[operation], event)
+      end, op_events[operation])
     end
   end
 end
@@ -101,28 +98,24 @@ function M.setup(opts)
         id = id,
         event = event,
         handler = function(args)
-          -- translate neo-tree arguemnts to the same format as nvim-tree
-          if type(args) == "table" then
-            args = { old_name = args.source, new_name = args.destination }
-          else
-            args = { fname = args }
-          end
           -- load module and call the callback
-          require(module).callback(args)
+          require(module).callback(
+            -- translate neo-tree arguemnts to the same format as nvim-tree
+            type(args) == "table" and { old_name = args.source, new_name = args.destination }
+              or { fname = args }
+          )
         end,
       })
       neo_tree_events.subscribe({
         id = id,
         event = event,
         handler = function(args)
-          -- translate neo-tree arguemnts to the same format as nvim-tree
-          if type(args) == "table" then
-            args = { old_name = args.source, new_name = args.destination }
-          else
-            args = { fname = args }
-          end
           -- load module and call the callback
-          require(module).callback(args)
+          require(module).callback(
+            -- translate neo-tree arguemnts to the same format as nvim-tree
+            type(args) == "table" and { old_name = args.source, new_name = args.destination }
+              or { fname = args }
+          )
         end,
       })
     end)
@@ -130,8 +123,7 @@ function M.setup(opts)
   end
 
   -- triptych integration
-  local ok_triptych, _ = pcall(require, "triptych")
-  if ok_triptych then
+  if pcall(require, "triptych") then
     log.debug("Setting up triptych integration")
 
     ---@type HandlerMap
@@ -148,14 +140,12 @@ function M.setup(opts)
         group = "TriptychEvents",
         pattern = event,
         callback = function(callback_data)
-          local args = {}
           local data = callback_data.data
-          if data.from_path and data.to_path then
-            args = { old_name = data.from_path, new_name = data.to_path }
-          else
-            args = { fname = data.path }
-          end
-          require(module).callback(args)
+          require(module).callback(
+            (data.from_path and data.to_path)
+                and { old_name = data.from_path, new_name = data.to_path }
+              or { fname = data.path }
+          )
         end,
       })
     end)

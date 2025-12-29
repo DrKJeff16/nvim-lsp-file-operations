@@ -1,6 +1,7 @@
 local utils = require("lsp-file-operations.utils")
 local log = require("lsp-file-operations.log")
 
+---@class LspFileOps.WillRename
 local M = {}
 
 ---@param client vim.lsp.Client
@@ -8,13 +9,14 @@ local M = {}
 ---@param new_name string
 ---@return lsp.WorkspaceEdit|nil
 local function getWorkspaceEdit(client, old_name, new_name)
+  utils.validate({
+    client = { client, { "table" } },
+    old_name = { old_name, { "string" } },
+    new_name = { new_name, { "string" } },
+  })
+
   local will_rename_params = {
-    files = {
-      {
-        oldUri = vim.uri_from_fname(old_name),
-        newUri = vim.uri_from_fname(new_name),
-      },
-    },
+    files = { { oldUri = vim.uri_from_fname(old_name), newUri = vim.uri_from_fname(new_name) } },
   }
   log.debug("Sending workspace/willRenameFiles request", will_rename_params)
   local timeout_ms = require("lsp-file-operations").config.timeout_ms
@@ -33,6 +35,8 @@ local function getWorkspaceEdit(client, old_name, new_name)
 end
 
 function M.callback(data)
+  utils.validate({ data = { data, { "table" } } })
+
   local clients = vim.fn.has("nvim-0.10") == 1 and vim.lsp.get_clients()
     or vim.lsp.get_active_clients()
   for _, client in pairs(clients) do

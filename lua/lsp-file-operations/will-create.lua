@@ -1,12 +1,18 @@
 local utils = require("lsp-file-operations.utils")
 local log = require("lsp-file-operations.log")
 
+---@class LspFileOps.WillCreate
 local M = {}
 
 ---@param client vim.lsp.Client
 ---@param fname string
 ---@return lsp.WorkspaceEdit|nil
 local function getWorkspaceEdit(client, fname)
+  utils.validate({
+    client = { client, { "table" } },
+    fname = { fname, { "string" } },
+  })
+
   local will_create_params = { files = { { uri = vim.uri_from_fname(fname) } } }
   log.debug("Sending workspace/willCreateFiles request", will_create_params)
   local timeout_ms = require("lsp-file-operations").config.timeout_ms
@@ -25,6 +31,8 @@ local function getWorkspaceEdit(client, fname)
 end
 
 function M.callback(data)
+  utils.validate({ data = { data, { "table" } } })
+
   local clients = vim.fn.has("nvim-0.10") == 1 and vim.lsp.get_clients()
     or vim.lsp.get_active_clients()
   for _, client in pairs(clients) do

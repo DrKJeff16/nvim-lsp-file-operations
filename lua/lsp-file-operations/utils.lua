@@ -1,16 +1,64 @@
+---Non-legacy validation spec (>=v0.11)
+---@class ValidateSpec
+---@field [1] any
+---@field [2] vim.validate.Validator
+---@field [3]? boolean
+---@field [4]? string
+
 local Path = require("plenary").path
 
 local log = require("lsp-file-operations.log")
 
+---@class LspFileOps.Utils
 local M = {}
+
+---Dynamic `vim.validate()` wrapper. Covers both legacy and newer implementations
+---@param T table<string, vim.validate.Spec|ValidateSpec>
+function M.validate(T)
+  if vim.fn.has("nvim-0.11") ~= 1 then
+    ---Filter table to fit legacy standard
+    ---@cast T table<string, vim.validate.Spec>
+    for name, spec in pairs(T) do
+      while #spec > 3 do
+        spec[#spec] = nil
+      end
+
+      T[name] = spec
+    end
+
+    vim.validate(T)
+    return
+  end
+
+  ---Filter table to fit non-legacy standard
+  ---@cast T table<string, ValidateSpec>
+  for name, spec in pairs(T) do
+    while #spec > 4 do
+      spec[#spec] = nil
+    end
+
+    T[name] = spec
+  end
+
+  for name, spec in pairs(T) do
+    table.insert(spec, 1, name)
+    vim.validate(unpack(spec))
+  end
+end
 
 ---@param T table
 ---@param keys (string|integer)[]
 ---@return table|nil
 function M.get_nested_path(T, keys)
-  if #keys == 0 then
+  M.validate({
+    T = { T, { "table" } },
+    keys = { keys, { "table" } },
+  })
+
+  if vim.tbl_sempty(keys) then
     return T
   end
+
   local key = keys[1]
   if T[key] == nil then
     return
@@ -23,6 +71,11 @@ end
 ---@param is_dir boolean
 ---@return string path
 local function ensure_dir_trailing_slash(path, is_dir)
+  M.validate({
+    path = { path, { "string" } },
+    is_dir = { is_dir, { "boolean" } },
+  })
+
   return (is_dir and not path:match("/$")) and (path .. "/") or path
 end
 
@@ -30,6 +83,8 @@ end
 ---@return string absolute_path
 ---@return boolean is_dir
 local function get_absolute_path(name)
+  M.validate({ name = { name, { "string" } } })
+
   local path = Path:new(name)
   local is_dir = path:is_dir()
   local absolute_path = ensure_dir_trailing_slash(path:absolute(), is_dir)
@@ -39,6 +94,8 @@ end
 ---@param pattern lsp.FileOperationPattern
 ---@return string regex
 local function get_regex(pattern)
+  M.validate({ pattern = { pattern, { "table" } } })
+
   local regex = vim.fn.glob2regpat(pattern.glob)
   return (pattern.options and pattern.options.ignoreCase) and ("\\c" .. regex) or regex
 end
@@ -48,6 +105,12 @@ end
 ---@param name string
 ---@param is_dir boolean
 local function match_filter(filter, name, is_dir)
+  M.validate({
+    filter = { filter, { "table" } },
+    name = { name, { "string" } },
+    is_dir = { is_dir, { "boolean" } },
+  })
+
   local match_type = filter.pattern.matches
   if
     not match_type
@@ -70,6 +133,11 @@ end
 ---@param filters lsp.FileOperationFilter[]
 ---@param name string
 function M.matches_filters(filters, name)
+  M.validate({
+    filters = { filters, { "table" } },
+    name = { name, { "string" } },
+  })
+
   local absolute_path, is_dir = get_absolute_path(name)
   for _, filter in pairs(filters) do
     if match_filter(filter, absolute_path, is_dir) then

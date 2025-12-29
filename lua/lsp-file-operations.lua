@@ -1,6 +1,5 @@
-local M = {}
-
 local log = require("lsp-file-operations.log")
+local utils = require("lsp-file-operations.utils")
 
 local default_config = {
   debug = false,
@@ -35,10 +34,18 @@ local capabilities = {
 
 ---@alias HandlerMap table<string, string[]> a mapping from modules to events that trigger it
 
+---@class LspFileOps
+local M = {}
+
 --- helper function to subscribe events to a given module callback
 ---@param op_events HandlerMap the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
+  utils.validate({
+    op_events = { op_events, { "table" } },
+    subscribe = { subscribe, { "function" } },
+  })
+
   for operation, enabled in pairs(M.config.operations) do
     if enabled and modules[operation] and op_events[operation] then
       vim.tbl_map(function(event)
@@ -48,7 +55,10 @@ local function setup_events(op_events, subscribe)
   end
 end
 
+---@param opts? table
 function M.setup(opts)
+  utils.validate({ opts = { opts, { "table", "nil" }, true } })
+
   M.config = vim.tbl_deep_extend("force", default_config, opts or {})
   if M.config.debug then
     log.level = "debug"
@@ -155,8 +165,10 @@ end
 
 --- The extra client capabilities provided by this plugin. To be merged with
 --- vim.lsp.protocol.make_client_capabilities() and sent to the LSP server.
+---@return lsp.ClientCapabilities capabilities
 function M.default_capabilities()
   local config = M.config or default_config
+  ---@type lsp.ClientCapabilities
   local result = {
     workspace = {
       fileOperations = {},

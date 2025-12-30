@@ -55,7 +55,7 @@ function M.get_nested_path(T, keys)
     keys = { keys, { "table" } },
   })
 
-  if vim.tbl_sempty(keys) then
+  if vim.tbl_isempty(keys) then
     return T
   end
 

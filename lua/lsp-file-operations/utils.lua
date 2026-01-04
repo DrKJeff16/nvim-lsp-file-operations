@@ -20,7 +20,7 @@ function M.validate(T)
     ---@cast T table<string, vim.validate.Spec>
     for name, spec in pairs(T) do
       while #spec > 3 do
-        spec[#spec] = nil
+        table.remove(spec, #spec)
       end
 
       T[name] = spec
@@ -34,7 +34,7 @@ function M.validate(T)
   ---@cast T table<string, ValidateSpec>
   for name, spec in pairs(T) do
     while #spec > 4 do
-      spec[#spec] = nil
+      table.remove(spec, #spec)
     end
 
     T[name] = spec

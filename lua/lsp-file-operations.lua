@@ -1,35 +1,49 @@
 local log = require("lsp-file-operations.log")
 local utils = require("lsp-file-operations.utils")
 
+---@class LspFileOpsConfig.Operations
+---@field didCreateFiles? boolean
+---@field didDeleteFiles? boolean
+---@field didRenameFiles? boolean
+---@field willCreateFiles? boolean
+---@field willDeleteFiles? boolean
+---@field willRenameFiles? boolean
+
+---@class LspFileOpsConfig
+---@field debug? boolean
+---@field timeout_ms? integer
+---@field operations? LspFileOpsConfig.Operations
 local default_config = {
   debug = false,
   timeout_ms = 10000,
   operations = {
-    willRenameFiles = true,
+    didCreateFiles = true,
+    didDeleteFiles = true,
     didRenameFiles = true,
     willCreateFiles = true,
-    didCreateFiles = true,
     willDeleteFiles = true,
-    didDeleteFiles = true,
+    willRenameFiles = true,
   },
 }
 
+---@enum LspFileOpsModules
 local modules = {
-  willRenameFiles = "lsp-file-operations.will-rename",
+  didCreateFiles = "lsp-file-operations.did-create",
+  didDeleteFiles = "lsp-file-operations.did-delete",
   didRenameFiles = "lsp-file-operations.did-rename",
   willCreateFiles = "lsp-file-operations.will-create",
-  didCreateFiles = "lsp-file-operations.did-create",
   willDeleteFiles = "lsp-file-operations.will-delete",
-  didDeleteFiles = "lsp-file-operations.did-delete",
+  willRenameFiles = "lsp-file-operations.will-rename",
 }
 
+---@enum LspFileOpsCapabilities
 local capabilities = {
-  willRenameFiles = "willRename",
+  didCreateFiles = "didCreate",
+  didDeleteFiles = "didDelete",
   didRenameFiles = "didRename",
   willCreateFiles = "willCreate",
-  didCreateFiles = "didCreate",
   willDeleteFiles = "willDelete",
-  didDeleteFiles = "didDelete",
+  willRenameFiles = "willRename",
 }
 
 ---@alias HandlerMap table<string, string[]> a mapping from modules to events that trigger it
@@ -55,7 +69,7 @@ local function setup_events(op_events, subscribe)
   end
 end
 
----@param opts? table
+---@param opts? LspFileOpsConfig
 function M.setup(opts)
   utils.validate({ opts = { opts, { "table", "nil" }, true } })
 
@@ -136,14 +150,13 @@ function M.setup(opts)
   if pcall(require, "triptych") then
     log.debug("Setting up triptych integration")
 
-    ---@type HandlerMap
-    local events = {
-      willRenameFiles = { "TriptychWillMoveNode" },
+    local events = { ---@type HandlerMap
+      didCreateFiles = { "TriptychDidCreateNode" },
+      didDeleteFiles = { "TriptychDidDeleteNode" },
       didRenameFiles = { "TriptychDidMoveNode" },
       willCreateFiles = { "TriptychWillCreateNode" },
-      didCreateFiles = { "TriptychDidCreateNode" },
       willDeleteFiles = { "TriptychWillDeleteNode" },
-      didDeleteFiles = { "TriptychDidDeleteNode" },
+      willRenameFiles = { "TriptychWillMoveNode" },
     }
     setup_events(events, function(module, event)
       vim.api.nvim_create_autocmd("User", {
@@ -168,12 +181,7 @@ end
 ---@return lsp.ClientCapabilities capabilities
 function M.default_capabilities()
   local config = M.config or default_config
-  ---@type lsp.ClientCapabilities
-  local result = {
-    workspace = {
-      fileOperations = {},
-    },
-  }
+  local result = { workspace = { fileOperations = {} } } ---@type lsp.ClientCapabilities
   for operation, capability in pairs(capabilities) do
     result.workspace.fileOperations[capability] = config.operations[operation]
   end

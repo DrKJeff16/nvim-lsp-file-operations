@@ -37,8 +37,7 @@ end
 function M.callback(data)
   utils.validate({ data = { data, { "table" } } })
 
-  local clients = vim.fn.has("nvim-0.10") == 1 and vim.lsp.get_clients()
-    or vim.lsp.get_active_clients()
+  local clients = utils.get_clients()
   for _, client in pairs(clients) do
     if client.initialized ~= nil and client.initialized then
       local will_rename = utils.get_nested_path(

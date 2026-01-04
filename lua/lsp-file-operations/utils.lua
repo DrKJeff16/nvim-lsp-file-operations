@@ -46,6 +46,30 @@ function M.validate(T)
   end
 end
 
+---@return vim.lsp.Client[] clients
+function M.get_clients()
+  ---@diagnostic disable-next-line:deprecated
+  return vim.fn.has("nvim-0.10") == 1 and vim.lsp.get_clients() or vim.lsp.get_active_clients()
+end
+
+---@param client vim.lsp.Client
+---@param method vim.lsp.protocol.Method
+---@param params? table
+function M.client_notify(client, method, params)
+  M.validate({
+    client = { client, { "table" } },
+    method = { method, { "string" } },
+    params = { params, { "table", "nil" }, true },
+  })
+
+  if vim.fn.has("nvim-0.11") == 1 then
+    client:notify(method, params)
+    return
+  end
+
+  client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
+end
+
 ---@param T table
 ---@param keys (string|integer)[]
 ---@return table|nil

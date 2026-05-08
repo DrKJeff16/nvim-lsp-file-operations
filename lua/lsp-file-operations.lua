@@ -46,13 +46,11 @@ local capabilities = {
   willRenameFiles = "willRename",
 }
 
----@alias HandlerMap table<string, string[]> a mapping from modules to events that trigger it
-
 ---@class LspFileOps
 local M = {}
 
 --- helper function to subscribe events to a given module callback
----@param op_events HandlerMap the table that maps modules to event strings
+---@param op_events table<string, string[]> the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
   utils.validate({
@@ -83,9 +81,8 @@ function M.setup(opts)
   if ok_nvim_tree then
     log.debug("Setting up nvim-tree integration")
 
-    ---@type HandlerMap
     local nvim_tree_event = nvim_tree_api.events.Event
-    local events = {
+    local events = { ---@type table<string, string[]>
       willRenameFiles = { nvim_tree_event.WillRenameNode },
       didRenameFiles = { nvim_tree_event.NodeRenamed },
       willCreateFiles = { nvim_tree_event.WillCreateFile },
@@ -105,8 +102,7 @@ function M.setup(opts)
   if ok_neo_tree then
     log.debug("Setting up neo-tree integration")
 
-    ---@type HandlerMap
-    local events = {
+    local events = { ---@type table<string, string[]>
       willRenameFiles = { neo_tree_events.BEFORE_FILE_RENAME, neo_tree_events.BEFORE_FILE_MOVE },
       didRenameFiles = { neo_tree_events.FILE_RENAMED, neo_tree_events.FILE_MOVED },
       didCreateFiles = { neo_tree_events.FILE_ADDED },
@@ -150,7 +146,7 @@ function M.setup(opts)
   if pcall(require, "triptych") then
     log.debug("Setting up triptych integration")
 
-    local events = { ---@type HandlerMap
+    local events = { ---@type table<string, string[]>
       didCreateFiles = { "TriptychDidCreateNode" },
       didDeleteFiles = { "TriptychDidDeleteNode" },
       didRenameFiles = { "TriptychDidMoveNode" },

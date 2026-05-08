@@ -1,49 +1,39 @@
 ---Non-legacy validation spec (>=v0.11)
----@class ValidateSpec
+---@class LspFileOps.ValidateSpec
 ---@field [1] any
 ---@field [2] vim.validate.Validator
 ---@field [3]? boolean
 ---@field [4]? string
 
 local Path = require("plenary").path
-
 local log = require("lsp-file-operations.log")
 
 ---@class LspFileOps.Utils
 local M = {}
 
----Dynamic `vim.validate()` wrapper. Covers both legacy and newer implementations
----@param T table<string, vim.validate.Spec|ValidateSpec>
+---Dynamic `vim.validate()` wrapper. Covers both legacy and newer implementations.
+--- ---
+---@param T table<string, vim.validate.Spec|LspFileOps.ValidateSpec>
 function M.validate(T)
-  if vim.fn.has("nvim-0.11") ~= 1 then
-    ---Filter table to fit legacy standard
-    ---@cast T table<string, vim.validate.Spec>
-    for name, spec in pairs(T) do
-      while #spec > 3 do
-        table.remove(spec, #spec)
-      end
-
-      T[name] = spec
-    end
-
-    vim.validate(T)
-    return
-  end
-
-  ---Filter table to fit non-legacy standard
-  ---@cast T table<string, ValidateSpec>
+  local max = vim.fn.has("nvim-0.11") == 1 and 3 or 4
   for name, spec in pairs(T) do
-    while #spec > 4 do
+    while #spec > max do
       table.remove(spec, #spec)
     end
-
     T[name] = spec
   end
 
-  for name, spec in pairs(T) do
-    table.insert(spec, 1, name)
-    vim.validate(unpack(spec))
+  if max == 3 then
+    ---@cast T LspFileOps.ValidateSpec
+    for name, spec in pairs(T) do
+      table.insert(spec, 1, name)
+      vim.validate(unpack(spec))
+    end
+    return
   end
+
+  ---@cast T vim.validate.Spec
+  vim.validate(T)
 end
 
 ---@return vim.lsp.Client[] clients

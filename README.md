@@ -21,10 +21,10 @@ https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-
 
 ## Installation
 
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+### Using [pckr.nvim](https://github.com/lewis6991/pckr.nvim)
 
 ```lua
-use {
+require('pckr').add({
   "antosha417/nvim-lsp-file-operations",
   requires = {
     "nvim-lua/plenary.nvim",
@@ -36,7 +36,7 @@ use {
   config = function()
     require("lsp-file-operations").setup()
   end,
-}
+})
 ```
 
 ### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
